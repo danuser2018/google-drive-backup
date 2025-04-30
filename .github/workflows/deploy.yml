@@ -1,0 +1,46 @@
+name: Deploy
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: '5.x'
+      - name: Determine Version
+        uses: gittools/actions/gitversion/execute@v0.9.7
+      - name: Display SemVer
+        run: |
+          echo "SemVer: $GITVERSION_MAJORMINORPATCH"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Google Drive Connector Docker Image
+        run: |
+          docker build ./connect --tag ghcr.io/danuser2018/google-drive-connector:$GITVERSION_MAJORMINORPATCH
+          docker tag ghcr.io/danuser2018/google-drive-connector:$GITVERSION_MAJORMINORPATCH ghcr.io/danuser2018/google-drive-connector:latest
+          docker push ghcr.io/danuser2018/google-drive-connector:$GITVERSION_MAJORMINORPATCH
+          docker push ghcr.io/danuser2018/google-drive-connector:latest
+
+      - name: Build and push Google Drive Backup Docker Image
+        run: |
+          docker build ./backup --tag ghcr.io/danuser2018/google-drive-backup:$GITVERSION_MAJORMINORPATCH
+          docker tag ghcr.io/danuser2018/google-drive-backup:$GITVERSION_MAJORMINORPATCH ghcr.io/danuser2018/google-drive-backup:latest
+          docker push ghcr.io/danuser2018/google-drive-backup:$GITVERSION_MAJORMINORPATCH
+          docker push ghcr.io/danuser2018/google-drive-backup:latest
+          
